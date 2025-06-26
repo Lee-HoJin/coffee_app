@@ -71,6 +71,20 @@ def init_database():
     conn.commit()
     conn.close()
 
+# 원두 저장 함수 (누락된 함수 추가)
+def save_bean(name, shop, variety, roast_date, notes):
+    conn = sqlite3.connect('coffee_tracker.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO beans (name, shop, variety, roast_date, notes, created_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (name, shop, variety, roast_date, notes, date.today()))
+    
+    conn.commit()
+    conn.close()
+    st.success("원두가 등록되었습니다!")
+
 # 원두 삭제
 def delete_bean(bean_id):
     conn = sqlite3.connect('coffee_tracker.db')
@@ -84,7 +98,7 @@ def delete_bean(bean_id):
     conn.close()
     st.success("원두와 관련 추출 기록이 모두 삭제되었습니다!")
 
-# 추출 기록 삭제
+# 추출 기록 삭제 (수정됨)
 def delete_brewing_record(record_id):
     conn = sqlite3.connect('coffee_tracker.db')
     cursor = conn.cursor()
@@ -94,17 +108,6 @@ def delete_brewing_record(record_id):
     conn.commit()
     conn.close()
     st.success("추출 기록이 삭제되었습니다!")
-    conn = sqlite3.connect('coffee_tracker.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO beans (name, shop, variety, roast_date, notes, created_date)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (name, shop, variety, roast_date, notes, date.today()))
-    
-    conn.commit()
-    conn.close()
-    st.success("원두가 등록되었습니다!")
 
 # 추출 기록 저장
 def save_brewing_record(bean_id, brew_date, grind_size, coffee_amount, 
@@ -131,14 +134,21 @@ def save_brewing_record(bean_id, brew_date, grind_size, coffee_amount,
     conn.close()
     st.success("추출 기록이 저장되었습니다!")
 
-# 원두 목록 가져오기 (최신순)
+# 원두 목록 가져오기 (최신순 정렬 강화)
 def get_beans():
     conn = sqlite3.connect('coffee_tracker.db')
-    df = pd.read_sql_query("SELECT * FROM beans ORDER BY created_date DESC", conn)
+    # created_date가 NULL인 경우를 대비해 id로도 정렬
+    df = pd.read_sql_query("""
+        SELECT * FROM beans 
+        ORDER BY 
+            CASE WHEN created_date IS NULL THEN 1 ELSE 0 END,
+            created_date DESC, 
+            id DESC
+    """, conn)
     conn.close()
     return df
 
-# 특정 원두의 추출 기록 가져오기
+# 특정 원두의 추출 기록 가져오기 (최신순 정렬 강화)
 def get_brewing_records(bean_id=None):
     conn = sqlite3.connect('coffee_tracker.db')
     if bean_id:
@@ -147,7 +157,10 @@ def get_brewing_records(bean_id=None):
             FROM brewing_records br 
             JOIN beans b ON br.bean_id = b.id 
             WHERE br.bean_id = ?
-            ORDER BY br.brew_date DESC
+            ORDER BY 
+                CASE WHEN br.brew_date IS NULL THEN 1 ELSE 0 END,
+                br.brew_date DESC, 
+                br.id DESC
         '''
         df = pd.read_sql_query(query, conn, params=(bean_id,))
     else:
@@ -155,7 +168,10 @@ def get_brewing_records(bean_id=None):
             SELECT br.*, b.name as bean_name 
             FROM brewing_records br 
             JOIN beans b ON br.bean_id = b.id 
-            ORDER BY br.brew_date DESC
+            ORDER BY 
+                CASE WHEN br.brew_date IS NULL THEN 1 ELSE 0 END,
+                br.brew_date DESC, 
+                br.id DESC
         '''
         df = pd.read_sql_query(query, conn)
     conn.close()
@@ -439,10 +455,11 @@ def main():
                             st.rerun()
                         else:
                             st.session_state[f'confirm_delete_bean_{bean["id"]}'] = True
-                            st.warning(f"⚠️ '{bean['name']}'과 관련 추출 기록이 모두 삭제됩니다. 다시 한 번 삭제 버튼을 눌러주세요.")
+                            st.rerun()  # 상태 변경 후 즉시 rerun
                 
-                # 삭제 확인 상태일 때 취소 버튼 표시
+                # 삭제 확인 상태일 때 경고 메시지와 취소 버튼 표시
                 if st.session_state.get(f'confirm_delete_bean_{bean["id"]}', False):
+                    st.warning(f"⚠️ '{bean['name']}'과 관련 추출 기록이 모두 삭제됩니다. 다시 한 번 🗑️ 버튼을 눌러주세요.")
                     if st.button("❌ 취소", key=f"cancel_delete_bean_{bean['id']}", use_container_width=True):
                         del st.session_state[f'confirm_delete_bean_{bean["id"]}']
                         st.rerun()
