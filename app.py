@@ -266,7 +266,7 @@ def cupping_tags_selector():
 # 메인 앱
 def main():
     st.set_page_config(
-        page_title="☕ 커피 추출 기록", 
+        page_title="커피 추출 기록", 
         layout="wide",
         initial_sidebar_state="collapsed"  # 모바일에서 사이드바 기본 접힘
     )
@@ -335,24 +335,24 @@ def main():
     if 'selected_cupping_tags' not in st.session_state:
         st.session_state.selected_cupping_tags = []
     
-    st.title("☕ 커피 추출 기록")
+    st.title("커피 추출 기록")
     
     # 현재 페이지에 따른 메뉴 옵션 구성
     if st.session_state.selected_bean_id:
         bean_info = get_bean_info(st.session_state.selected_bean_id)
         if bean_info is not None:
-            tab_options = ["🏠 홈", f"☕ {bean_info['name'][:8]}... 추출", "🫘 원두 등록", "📊 기록 보기", "📈 통계"]
+            tab_options = ["🏠 홈", f"☕ {bean_info['name'][:8]}... 추출", "• 원두 등록", "📊 기록 보기", "📈 통계"]
         else:
-            tab_options = ["🏠 홈", "🫘 원두 등록", "📊 기록 보기", "📈 통계"]
+            tab_options = ["🏠 홈", "• 원두 등록", "📊 기록 보기", "📈 통계"]
     else:
-        tab_options = ["🏠 홈", "🫘 원두 등록", "📊 기록 보기", "📈 통계"]
+        tab_options = ["🏠 홈", "• 원두 등록", "📊 기록 보기", "📈 통계"]
     
     # 현재 페이지에 맞는 인덱스 찾기
     current_index = 0
     if "추출하기" in st.session_state.current_page:
         current_index = 1 if len(tab_options) > 1 and "추출" in tab_options[1] else 0
-    elif st.session_state.current_page == "🫘 원두 등록":
-        current_index = tab_options.index("🫘 원두 등록") if "🫘 원두 등록" in tab_options else 0
+    elif st.session_state.current_page == "• 원두 등록":
+        current_index = tab_options.index("• 원두 등록") if "• 원두 등록" in tab_options else 0
     elif st.session_state.current_page == "📊 추출 기록 보기":
         current_index = tab_options.index("📊 기록 보기") if "📊 기록 보기" in tab_options else 0
     elif st.session_state.current_page == "📈 통계":
@@ -370,9 +370,9 @@ def main():
     if selected_tab == "🏠 홈":
         menu = "🏠 홈"
         st.session_state.current_page = "🏠 홈"
-    elif selected_tab == "🫘 원두 등록":
-        menu = "🫘 원두 등록"
-        st.session_state.current_page = "🫘 원두 등록"
+    elif selected_tab == "• 원두 등록":
+        menu = "• 원두 등록"
+        st.session_state.current_page = "• 원두 등록"
     elif selected_tab == "📊 기록 보기":
         menu = "📊 추출 기록 보기"
         st.session_state.current_page = "📊 추출 기록 보기"
@@ -391,7 +391,7 @@ def main():
     st.markdown("---")
     
     if menu == "🏠 홈":
-        st.header("등록된 원두 목록 ☕")
+        st.header("등록된 원두 목록")
         
         beans_df = get_beans()
         brewing_records_df = get_brewing_records()
@@ -468,11 +468,11 @@ def main():
         else:
             st.info("아직 등록된 원두가 없습니다. 먼저 원두를 등록해주세요!")
             if st.button("➕ 원두 등록하러 가기", use_container_width=True):
-                st.session_state.current_page = "🫘 원두 등록"
+                st.session_state.current_page = "• 원두 등록"
                 st.rerun()
     
-    elif menu == "🫘 원두 등록":
-        st.header("🫘 새 원두 등록")
+    elif menu == "• 원두 등록":
+        st.header("• 새 원두 등록")
         
         with st.form("bean_form"):
             name = st.text_input("☕ 원두 이름 *", placeholder="예: 콜롬비아 수프리모")
@@ -533,7 +533,7 @@ def main():
                         coffee_amount = st.number_input("☕ 커피 양 (g)", min_value=0.0, step=0.1, value=20.0)
                     
                     with col2:
-                        water_temp = st.selectbox("🌡️ 물 온도 (°C)", 
+                        water_temp = st.selectbox("🔥 물 온도 (°C)", 
                                                 options=list(range(88, 101)), 
                                                 index=2)  # 90도가 디폴트
                         adding_water = st.number_input("💧 첨수 (g)", min_value=0.0, step=1.0, value=100.0, 
@@ -638,7 +638,7 @@ def main():
                     # 모바일 최적화: 슬라이더들을 세로로 배치
                     taste_score = st.slider("👅 맛", 1, 5, 3)
                     aroma_score = st.slider("👃 향", 1, 5, 3)
-                    body_score = st.slider("🫖 바디감", 1, 5, 3)
+                    body_score = st.slider("☕ 바디감", 1, 5, 3)
                     acidity_score = st.slider("🍋 산미", 1, 5, 3)
                     overall_score = st.slider("🏆 전체 만족도", 1, 5, 3)
                     
@@ -684,7 +684,7 @@ def main():
         
         # 원두별 필터 (모바일 최적화)
         bean_filter = st.selectbox(
-            "🫘 원두 선택",
+            "• 원두 선택",
             ["전체 기록 보기"] + list(beans_df['name'].values) if not beans_df.empty else ["전체 기록 보기"],
             help="특정 원두의 기록만 보고 싶다면 선택하세요"
         )
@@ -736,7 +736,7 @@ def main():
                 **📱 추출 정보**
                 - 🔥 분쇄도: {record['grind_size']}클릭
                 - ☕ 커피량: {record['coffee_amount']}g  
-                - 🌡️ 온도: {record['water_temp']}°C
+                - 🔥 온도: {record['water_temp']}°C
                 - ⏱️ 시간: {record['brew_time']}
                 - 🎯 방법: {record['method']}
                 """)
@@ -755,7 +755,7 @@ def main():
                 **⭐ 평가 점수**
                 - 👅 맛: {'⭐' * record['taste_score']} ({record['taste_score']}/5)
                 - 👃 향: {'⭐' * record['aroma_score']} ({record['aroma_score']}/5)  
-                - 🫖 바디감: {'⭐' * record['body_score']} ({record['body_score']}/5)
+                - ☕ 바디감: {'⭐' * record['body_score']} ({record['body_score']}/5)
                 - 🍋 산미: {'⭐' * record['acidity_score']} ({record['acidity_score']}/5)
                 - 🏆 전체: {'⭐' * record['overall_score']} ({record['overall_score']}/5)
                 """)
@@ -802,7 +802,7 @@ def main():
             st.metric("⭐ 평균 만족도", f"{avg_score:.1f}/5")
         
         with col2:
-            st.metric("🫘 등록된 원두", len(beans_df))
+            st.metric("• 등록된 원두", len(beans_df))
             if len(brewing_records_df) > 0:
                 best_bean = brewing_records_df.groupby('bean_name')['overall_score'].mean().idxmax()
                 st.metric("🏆 최고 원두", best_bean)
@@ -820,7 +820,7 @@ def main():
         # 원두별 평균 점수
         bean_scores = brewing_records_df.groupby('bean_name')['overall_score'].mean().reset_index()
         fig = px.bar(bean_scores, x='bean_name', y='overall_score',
-                    title='🫘 원두별 평균 만족도')
+                    title='• 원두별 평균 만족도')
         fig.update_xaxes(tickangle=45)
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
@@ -845,7 +845,7 @@ def main():
         bean_counts = brewing_records_df['bean_name'].value_counts().reset_index()
         bean_counts.columns = ['bean_name', 'count']
         fig = px.pie(bean_counts, values='count', names='bean_name',
-                    title='🫘 원두별 추출 횟수')
+                    title='• 원두별 추출 횟수')
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
         
