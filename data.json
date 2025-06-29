@@ -1,0 +1,37 @@
+{
+  "beans": [
+    {
+      "id": 3,
+      "name": "에티오피아 Layo Teraga",
+      "shop": "하트 커피 로스터스",
+      "variety": "74110",
+      "roast_date": "2025-05-12",
+      "notes": "",
+      "created_date": "2025-06-29"
+    }
+  ],
+  "brewing_records": [
+    {
+      "id": 9,
+      "bean_id": 3,
+      "brew_date": "2025-06-26",
+      "grind_size": "24",
+      "coffee_amount": 20.0,
+      "water_amount": null,
+      "water_temp": 96.0,
+      "brew_time": "2'30\"",
+      "method": "드립",
+      "taste_score": 4,
+      "aroma_score": 2,
+      "body_score": 2,
+      "acidity_score": 3,
+      "overall_score": 3,
+      "tasting_notes": "클릭을 하나 더 조였는데, 오히려 묽어짐. 워터리 하긴 하지만 마실 만함!",
+      "improvements": "",
+      "equipment": "하리오 V60",
+      "adding_water": 103.0,
+      "pour_schedule": "[{\"water_amount\": 40.0, \"time\": \"0:00\"}, {\"water_amount\": 60.0, \"time\": \"0:40\"}, {\"water_amount\": 60.0, \"time\": \"1:10\"}, {\"water_amount\": 60.0, \"time\": \"1:40\"}]"
+    }
+  ],
+  "backup_date": "2025-06-29T16:17:28.667052"
+}

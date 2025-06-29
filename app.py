@@ -4,6 +4,90 @@ import pandas as pd
 from datetime import datetime, date
 import plotly.express as px
 import json
+import os
+
+# JSON 백업/복원 함수들
+def backup_to_json():
+    """현재 데이터를 JSON 파일로 백업"""
+    try:
+        conn = sqlite3.connect('coffee_tracker.db')
+        
+        # 원두 데이터 가져오기
+        beans_df = pd.read_sql_query("SELECT * FROM beans", conn)
+        beans_data = beans_df.to_dict('records') if not beans_df.empty else []
+        
+        # 추출 기록 데이터 가져오기
+        records_df = pd.read_sql_query("SELECT * FROM brewing_records", conn)
+        records_data = records_df.to_dict('records') if not records_df.empty else []
+        
+        conn.close()
+        
+        # JSON 형태로 구성
+        backup_data = {
+            "beans": beans_data,
+            "brewing_records": records_data,
+            "backup_date": datetime.now().isoformat()
+        }
+        
+        # data.json 파일로 저장
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(backup_data, f, ensure_ascii=False, indent=2)
+        
+        return True
+    except Exception as e:
+        st.error(f"백업 중 오류가 발생했습니다: {str(e)}")
+        return False
+
+def load_from_json():
+    """JSON 파일에서 데이터를 로드"""
+    try:
+        if not os.path.exists('data.json'):
+            return False
+        
+        with open('data.json', 'r', encoding='utf-8') as f:
+            backup_data = json.load(f)
+        
+        conn = sqlite3.connect('coffee_tracker.db')
+        cursor = conn.cursor()
+        
+        # 기존 데이터 삭제
+        cursor.execute("DELETE FROM brewing_records")
+        cursor.execute("DELETE FROM beans")
+        
+        # 원두 데이터 복원
+        if backup_data.get("beans"):
+            for bean in backup_data["beans"]:
+                cursor.execute('''
+                    INSERT INTO beans (id, name, shop, variety, roast_date, notes, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (bean.get('id'), bean.get('name'), bean.get('shop'), 
+                     bean.get('variety'), bean.get('roast_date'), 
+                     bean.get('notes'), bean.get('created_date')))
+        
+        # 추출 기록 데이터 복원
+        if backup_data.get("brewing_records"):
+            for record in backup_data["brewing_records"]:
+                cursor.execute('''
+                    INSERT INTO brewing_records (id, bean_id, brew_date, grind_size, coffee_amount,
+                                               water_amount, water_temp, brew_time, method, equipment,
+                                               adding_water, pour_schedule, taste_score, aroma_score,
+                                               body_score, acidity_score, overall_score, tasting_notes, improvements)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (record.get('id'), record.get('bean_id'), record.get('brew_date'),
+                     record.get('grind_size'), record.get('coffee_amount'), record.get('water_amount'),
+                     record.get('water_temp'), record.get('brew_time'), record.get('method'),
+                     record.get('equipment'), record.get('adding_water'), record.get('pour_schedule'),
+                     record.get('taste_score'), record.get('aroma_score'), record.get('body_score'),
+                     record.get('acidity_score'), record.get('overall_score'), 
+                     record.get('tasting_notes'), record.get('improvements')))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        st.error(f"복원 중 오류가 발생했습니다: {str(e)}")
+        return False
 
 # 데이터베이스 초기화 및 마이그레이션
 def init_database():
@@ -65,11 +149,23 @@ def init_database():
     except sqlite3.OperationalError:
         pass  # 이미 존재하면 무시
     
-    # grind_size 타입을 TEXT에서 INTEGER로 변경하는 것은 복잡하므로,
-    # 기존 데이터와 호환성을 위해 TEXT로 유지하고 저장할 때 문자열로 변환
-    
     conn.commit()
     conn.close()
+    
+    # JSON 파일이 있으면 데이터 로드
+    if os.path.exists('data.json'):
+        # 현재 데이터베이스가 비어있는지 확인
+        conn = sqlite3.connect('coffee_tracker.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM beans")
+        bean_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM brewing_records")
+        record_count = cursor.fetchone()[0]
+        conn.close()
+        
+        # 데이터베이스가 비어있으면 JSON에서 로드
+        if bean_count == 0 and record_count == 0:
+            load_from_json()
 
 # 원두 저장 함수 (누락된 함수 추가)
 def save_bean(name, shop, variety, roast_date, notes):
@@ -83,6 +179,9 @@ def save_bean(name, shop, variety, roast_date, notes):
     
     conn.commit()
     conn.close()
+    
+    # 자동 백업
+    backup_to_json()
     st.success("원두가 등록되었습니다!")
 
 # 원두 삭제
@@ -96,6 +195,9 @@ def delete_bean(bean_id):
     
     conn.commit()
     conn.close()
+    
+    # 자동 백업
+    backup_to_json()
     st.success("원두와 관련 추출 기록이 모두 삭제되었습니다!")
 
 # 추출 기록 삭제 (수정됨)
@@ -107,6 +209,9 @@ def delete_brewing_record(record_id):
     
     conn.commit()
     conn.close()
+    
+    # 자동 백업
+    backup_to_json()
     st.success("추출 기록이 삭제되었습니다!")
 
 # 추출 기록 저장
@@ -132,6 +237,9 @@ def save_brewing_record(bean_id, brew_date, grind_size, coffee_amount,
     
     conn.commit()
     conn.close()
+    
+    # 자동 백업
+    backup_to_json()
     st.success("추출 기록이 저장되었습니다!")
 
 # 원두 목록 가져오기 (최신순 정렬 강화)
@@ -224,7 +332,7 @@ def get_cupping_notes_template():
 def cupping_tags_selector():
     template = get_cupping_notes_template()
     
-    st.subheader("☕ 커핑 노트 템플릿")
+    st.subheader("커핑 노트 템플릿")
     st.markdown("*태그를 클릭해서 선택하세요! 선택된 태그들이 테이스팅 노트에 자동으로 추가됩니다.*")
     
     for category, tags in template.items():
@@ -274,6 +382,11 @@ def main():
     # 모바일 최적화 CSS (단순한 스타일)
     st.markdown("""
     <style>
+    /* 이모지 폰트 설정 */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    }
+    
     /* 모바일 최적화 스타일 */
     .main .block-container {
         padding-top: 2rem;
@@ -470,6 +583,110 @@ def main():
             if st.button("➕ 원두 등록하러 가기", use_container_width=True):
                 st.session_state.current_page = "• 원두 등록"
                 st.rerun()
+        
+        # 백업/복원 기능 추가
+        st.markdown("---")
+        st.subheader("📁 데이터 백업/복원")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("💾 수동 백업", use_container_width=True, help="현재 데이터를 JSON 파일로 백업"):
+                if backup_to_json():
+                    st.success("✅ 백업 완료! data.json 파일이 생성되었습니다.")
+                    
+        with col2:
+            # 파일 업로드로 복원
+            uploaded_file = st.file_uploader("📤 백업 파일 복원", type=['json'], help="이전에 백업한 JSON 파일을 업로드하여 복원")
+            if uploaded_file is not None:
+                try:
+                    backup_data = json.load(uploaded_file)
+                    
+                    # 임시로 파일 저장
+                    with open('temp_restore.json', 'w', encoding='utf-8') as f:
+                        json.dump(backup_data, f, ensure_ascii=False, indent=2)
+                    
+                    # 복원 실행
+                    conn = sqlite3.connect('coffee_tracker.db')
+                    cursor = conn.cursor()
+                    
+                    # 기존 데이터 삭제
+                    cursor.execute("DELETE FROM brewing_records")
+                    cursor.execute("DELETE FROM beans")
+                    
+                    # 원두 데이터 복원
+                    if backup_data.get("beans"):
+                        for bean in backup_data["beans"]:
+                            cursor.execute('''
+                                INSERT INTO beans (id, name, shop, variety, roast_date, notes, created_date)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            ''', (bean.get('id'), bean.get('name'), bean.get('shop'), 
+                                 bean.get('variety'), bean.get('roast_date'), 
+                                 bean.get('notes'), bean.get('created_date')))
+                    
+                    # 추출 기록 데이터 복원
+                    if backup_data.get("brewing_records"):
+                        for record in backup_data["brewing_records"]:
+                            cursor.execute('''
+                                INSERT INTO brewing_records (id, bean_id, brew_date, grind_size, coffee_amount,
+                                                           water_amount, water_temp, brew_time, method, equipment,
+                                                           adding_water, pour_schedule, taste_score, aroma_score,
+                                                           body_score, acidity_score, overall_score, tasting_notes, improvements)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (record.get('id'), record.get('bean_id'), record.get('brew_date'),
+                                 record.get('grind_size'), record.get('coffee_amount'), record.get('water_amount'),
+                                 record.get('water_temp'), record.get('brew_time'), record.get('method'),
+                                 record.get('equipment'), record.get('adding_water'), record.get('pour_schedule'),
+                                 record.get('taste_score'), record.get('aroma_score'), record.get('body_score'),
+                                 record.get('acidity_score'), record.get('overall_score'), 
+                                 record.get('tasting_notes'), record.get('improvements')))
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    # 복원 후 즉시 백업하여 data.json 업데이트
+                    backup_to_json()
+                    
+                    # 임시 파일 삭제
+                    if os.path.exists('temp_restore.json'):
+                        os.remove('temp_restore.json')
+                    
+                    st.success("✅ 데이터 복원 완료!")
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ 복원 중 오류가 발생했습니다: {str(e)}")
+        
+        with col3:
+            # 다운로드 버튼
+            if os.path.exists('data.json'):
+                with open('data.json', 'r', encoding='utf-8') as f:
+                    json_data = f.read()
+                
+                st.download_button(
+                    label="📥 백업 다운로드",
+                    data=json_data,
+                    file_name=f"coffee_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    use_container_width=True,
+                    help="현재 데이터를 JSON 파일로 다운로드"
+                )
+            else:
+                st.info("아직 백업 파일이 없습니다")
+        
+        # 백업 파일 정보 표시
+        if os.path.exists('data.json'):
+            try:
+                with open('data.json', 'r', encoding='utf-8') as f:
+                    backup_data = json.load(f)
+                
+                backup_date = backup_data.get('backup_date', '알 수 없음')
+                beans_count = len(backup_data.get('beans', []))
+                records_count = len(backup_data.get('brewing_records', []))
+                
+                st.caption(f"📁 백업 파일 정보: {backup_date} | 원두 {beans_count}개 | 기록 {records_count}개")
+            except:
+                pass
     
     elif menu == "• 원두 등록":
         st.header("• 새 원두 등록")
